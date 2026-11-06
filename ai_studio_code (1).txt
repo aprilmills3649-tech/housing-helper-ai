@@ -1,0 +1,334 @@
+import React, { useState, useMemo } from 'react';
+import {
+  Home,
+  FileText,
+  Search,
+  ShieldAlert,
+  Wrench,
+  TrendingUp,
+  MessageSquare,
+  HelpCircle,
+  ExternalLink,
+  CheckCircle2,
+  AlertTriangle,
+  Clock,
+  Send,
+  Building,
+  User,
+  Info,
+  Calendar,
+  Phone,
+  Printer,
+  Copy,
+  ChevronRight,
+  Sparkles
+} from 'lucide-react';
+
+// ==========================================
+// 1. DATA FIXTURES & LOCALIZED KNOWLEDGE BASE
+// ==========================================
+
+const HOUSING_AUTHORITIES = {
+  hcaac: {
+    id: 'hcaac',
+    name: 'Housing Commission of Anne Arundel County (HCAAC)',
+    jurisdiction: 'Anne Arundel County (excluding Annapolis City limits)',
+    address: '7477 Baltimore Annapolis Blvd, Glen Burnie, MD 21061',
+    phone: '(410) 222-6200',
+    website: 'https://www.hcaac.org',
+    portal: 'Rent Cafe / HCAAC Portal',
+    paymentStandards: {
+      '0': 1580,
+      '1': 1750,
+      '2': 2120,
+      '3': 2750,
+      '4': 3280
+    },
+    programs: ['Housing Choice Voucher (HCV)', 'Family Self-Sufficiency (FSS)', 'Project-Based Vouchers']
+  },
+  haca: {
+    id: 'haca',
+    name: 'Housing Authority of the City of Annapolis (HACA)',
+    jurisdiction: 'City of Annapolis Only',
+    address: '1217 Madison St, Annapolis, MD 21403',
+    phone: '(410) 267-8000',
+    website: 'https://www.hacamd.org',
+    portal: 'HACA Resident Connect',
+    paymentStandards: {
+      '0': 1610,
+      '1': 1790,
+      '2': 2160,
+      '3': 2810,
+      '4': 3350
+    },
+    programs: ['Public Housing', 'Housing Choice Voucher (HCV)', 'FSS', 'RAD Modernization']
+  }
+};
+
+const SAMPLE_LISTINGS = [
+  {
+    id: 'prop-1',
+    title: 'Chesapeake Terrace Apartments',
+    address: '7420 Ritchie Hwy, Glen Burnie, MD 21061',
+    bedrooms: 2,
+    bathrooms: 1.5,
+    rent: 1980,
+    deposit: 1000,
+    accessibility: ['Wheelchair Ramp', 'First Floor Entry', 'Wide Doorways'],
+    propertyType: 'Multi-Family Apartment',
+    landlordName: 'Harbor Crest Management',
+    landlordEmail: 'leasing@harborcrest-example.com',
+    landlordPhone: '(410) 555-0143',
+    voucherStatus: 'Accepts Housing Choice Vouchers (Subject to HQS Inspection)'
+  },
+  {
+    id: 'prop-2',
+    title: 'Severn Run Garden Homes',
+    address: '1804 Reece Rd, Severn, MD 21144',
+    bedrooms: 3,
+    bathrooms: 2.0,
+    rent: 2450,
+    deposit: 1500,
+    accessibility: ['Roll-in Shower', 'Accessible Parking Space'],
+    propertyType: 'Townhome',
+    landlordName: 'Patuxent Property Group',
+    landlordEmail: 'inquiries@patuxent-demo.com',
+    landlordPhone: '(410) 555-0199',
+    voucherStatus: 'Welcomes Voucher Applicants (HCAAC Affiliated)'
+  },
+  {
+    id: 'prop-3',
+    title: 'Eastport Village Residences',
+    address: '910 Chesapeake Ave, Annapolis, MD 21403',
+    bedrooms: 1,
+    bathrooms: 1.0,
+    rent: 1690,
+    deposit: 800,
+    accessibility: ['Elevator Access', 'Lever Door Handles'],
+    propertyType: 'Mid-Rise Apartment',
+    landlordName: 'Annapolis Bay Living',
+    landlordEmail: 'contact@annapolisbay-demo.org',
+    landlordPhone: '(410) 555-0182',
+    voucherStatus: 'HACA Voucher Eligible Unit'
+  }
+];
+
+export default function HousingHelperApp() {
+  // Navigation State
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [demoBannerOpen, setDemoBannerOpen] = useState(true);
+
+  // Module 1: Voucher State
+  const [selectedHA, setSelectedHA] = useState('hcaac');
+  const [voucherBedrooms, setVoucherBedrooms] = useState('2');
+  const [grossMonthlyIncome, setGrossMonthlyIncome] = useState(2400);
+
+  // Module 2: Housing Search State
+  const [searchBeds, setSearchBeds] = useState('all');
+  const [maxRent, setMaxRent] = useState(2500);
+  const [requireAccessibility, setRequireAccessibility] = useState(false);
+  const [selectedListing, setSelectedListing] = useState(null);
+  const [generatedLetter, setGeneratedLetter] = useState('');
+
+  // Module 3: Mold & Safe Housing State
+  const [concernDate, setConcernDate] = useState('2026-10-14');
+  const [roomLocation, setRoomLocation] = useState('Bathroom & Exterior Bedroom Wall');
+  const [concernDesc, setConcernDesc] = useState('Dark discoloration spreading along baseboards under the bathroom vanity with persistent damp drywall and musty odor.');
+  const [dateNotifiedLandlord, setDateNotifiedLandlord] = useState('2026-10-18');
+  const [landlordResponse, setLandlordResponse] = useState('Property manager wiped the surface with bleach; staining returned within 6 days.');
+  const [timelineItems, setTimelineItems] = useState([
+    {
+      id: 1,
+      date: '2026-10-14',
+      type: 'Initial Discovery',
+      notes: 'Noticed recurring dampness under bathroom vanity and black speckled pattern along lower wall.'
+    },
+    {
+      id: 2,
+      date: '2026-10-18',
+      type: 'Written Notice to Landlord',
+      notes: 'Sent formal repair ticket through online portal requesting pipe inspection and moisture check.'
+    },
+    {
+      id: 3,
+      date: '2026-10-22',
+      type: 'Maintenance Visit',
+      notes: 'Technician wiped wall surface with bleach cleaner. No plumbing repair or moisture meter testing done.'
+    },
+    {
+      id: 4,
+      date: '2026-10-28',
+      type: 'Re-emergence & Escalation',
+      notes: 'Moisture returned; drywall feels soft to the touch. Prepared Maryland Rent Escrow 30-day notice.'
+    }
+  ]);
+  const [draftedNotice, setDraftedNotice] = useState('');
+
+  // Module 4: Public Housing Repairs State
+  const [housingType, setHousingType] = useState('public_housing');
+  const [repairs, setRepairs] = useState([
+    {
+      id: 'WO-8821',
+      category: 'Health and Safety (Mold & Leaks)',
+      location: 'Building 4, Unit 203',
+      description: 'Persistent kitchen sink trap leak causing base cabinet decay and musty odor.',
+      submittedDate: '2026-10-12',
+      status: 'Appointment Scheduled',
+      appointment: '2026-11-12 at 10:00 AM',
+      notes: 'Lead-safe work containment requested due to 1974 building construction date.'
+    },
+    {
+      id: 'WO-8835',
+      category: 'Interior Repairs (Flooring)',
+      location: 'Hallway & Living Room',
+      description: 'Severely buckled vinyl tile causing tripping hazard for elder family member.',
+      submittedDate: '2026-10-25',
+      status: 'Submitted',
+      appointment: 'Pending housing authority review',
+      notes: 'Photographs submitted to facility director.'
+    }
+  ]);
+  const [communityFeedback] = useState([
+    { id: 1, issue: 'Boiler pressure failure / inconsistent hot water', building: 'Building C (East Wing)', reportsCount: 7, status: 'Capital Investigation Underway' },
+    { id: 2, issue: 'Exterior safety lighting outage along south sidewalk', building: 'Courtyard Common Area', reportsCount: 4, status: 'Parts on Order' }
+  ]);
+
+  // Module 5: Future Home Fund State
+  const [monthlySavingsGoal, setMonthlySavingsGoal] = useState(50);
+  const [checklist, setChecklist] = useState({
+    budgetSet: true,
+    creditReportPulled: true,
+    hudCounselorContacted: false,
+    fssEscrowEnrolled: true,
+    downPaymentGrantIdentified: false
+  });
+
+  // Module 6: Central AI Assistant State
+  const [chatInput, setChatInput] = useState('');
+  const [chatMessages, setChatMessages] = useState([
+    {
+      sender: 'ai',
+      text: "Welcome to Housing Helper AI! I'm your dedicated housing navigation assistant for Anne Arundel County and Annapolis. How can I help you today? You can ask me about voucher payment standards, documenting repair problems, drafting a landlord notice, or exploring the Family Self-Sufficiency (FSS) homeownership track."
+    }
+  ]);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+
+  // Dynamic Rent Calculations
+  const currentHA = HOUSING_AUTHORITIES[selectedHA];
+  const paymentStandard = currentHA.paymentStandards[voucherBedrooms] || 2120;
+  const estimatedTenantShare = Math.round(grossMonthlyIncome * 0.30);
+  const estimatedHapPortion = Math.max(0, paymentStandard - estimatedTenantShare);
+
+  // Dynamic Savings Calculations
+  const savings1Yr = monthlySavingsGoal * 12;
+  const savings2Yr = monthlySavingsGoal * 24;
+  const savings3Yr = monthlySavingsGoal * 36;
+  const savings5Yr = monthlySavingsGoal * 60;
+  const estimatedFssMatch = monthlySavingsGoal * 36 * 1.5; // Educational illustration
+
+  // Filtered Properties
+  const filteredListings = useMemo(() => {
+    return SAMPLE_LISTINGS.filter(p => {
+      if (searchBeds !== 'all' && p.bedrooms.toString() !== searchBeds) return false;
+      if (p.rent > maxRent) return false;
+      if (requireAccessibility && p.accessibility.length === 0) return false;
+      return true;
+    });
+  }, [searchBeds, maxRent, requireAccessibility]);
+
+  // ==========================================
+  // HANDLERS & AI GENERATORS
+  // ==========================================
+
+  const handleSendMessage = async (customMessage) => {
+    const textToSend = customMessage || chatInput;
+    if (!textToSend.trim()) return;
+
+    const userMsg = { sender: 'user', text: textToSend };
+    setChatMessages(prev => [...prev, userMsg]);
+    setChatInput('');
+    setIsAiLoading(true);
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: textToSend,
+          moduleContext: activeTab,
+          housingSituation: `Authority: ${currentHA.name}, Housing Type: ${housingType}, Income: $${grossMonthlyIncome}/mo`
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setChatMessages(prev => [...prev, { sender: 'ai', text: data.reply }]);
+      } else {
+        throw new Error('Fallback required');
+      }
+    } catch {
+      // Local Contextual AI Fallback Engine
+      setTimeout(() => {
+        let fallbackReply = "I have recorded your request. Under Maryland law (Real Property Code § 8-211) and Anne Arundel County health standards, landlords must maintain units in safe, habitably sound condition. If this is a life-safety emergency, please contact County Emergency Services or Code Enforcement.";
+        const lower = textToSend.toLowerCase();
+
+        if (lower.includes('mold') || lower.includes('water') || lower.includes('leak')) {
+          fallbackReply = "For suspected mold and dampness in Anne Arundel County: 1) Document everything in writing with date-stamped photos. 2) Provide formal written notice to your landlord giving 30 days to resolve under MD Real Property § 8-211. 3) AI cannot identify mold species or certify health hazards; contact the Anne Arundel County Department of Health (Housing Hygiene Bureau at 410-222-7193) if the landlord does not respond.";
+        } else if (lower.includes('voucher') || lower.includes('hcaac') || lower.includes('haca')) {
+          fallbackReply = `For ${currentHA.name}: The payment standard for a ${voucherBedrooms}-bedroom voucher is approximately $${paymentStandard}/month. Generally, you pay roughly 30% of your adjusted monthly income toward rent and utilities, while the housing authority covers the rest up to the payment standard.`;
+        } else if (lower.includes('fss') || lower.includes('savings') || lower.includes('buy a home')) {
+          fallbackReply = "The Family Self-Sufficiency (FSS) program lets voucher holders build an interest-bearing escrow account when their earned income rises. Instead of having all your rent increase go to the landlord, a portion is deposited into escrow for you! You can use this for homeownership, continuing education, or emergency reserves.";
+        }
+
+        setChatMessages(prev => [...prev, { sender: 'ai', text: fallbackReply }]);
+      }, 700);
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  const generateLandlordInquiry = (listing) => {
+    setSelectedListing(listing);
+    const letter = `Dear ${listing.landlordName},
+
+I am writing to express my strong interest in leasing the property located at ${listing.address} (Listed at $${listing.rent}/month).
+
+I am an approved participant with the ${currentHA.name} holding an active ${voucherBedrooms}-bedroom Housing Choice Voucher in good standing. My voucher payment standard readily aligns with your asking rent.
+
+Key Tenancy Highlights:
+• Reliable, on-time monthly subsidy payment directly disbursed by ${currentHA.name}.
+• Complete Request for Tenancy Approval (RFTA) packet ready for swift submission.
+• Excellent rental history, verified references, and commitment to maintaining the residence.
+
+Could we arrange an in-person or virtual walkthrough this week? Thank you for your time and dedication to fair housing.
+
+Sincerely,
+Demonstration Voucher Participant
+Phone: (443) 555-0129 | Email: demo.resident@example.com`;
+
+    setGeneratedLetter(letter);
+  };
+
+  const generateFormalMaintenanceNotice = () => {
+    const letter = `NOTICE OF DEFECTIVE CONDITIONS & REQUEST FOR REMEDIATION
+PURSUANT TO MARYLAND REAL PROPERTY CODE SECTION 8-211
+
+Date: November 6, 2026
+To: Property Management / Housing Provider
+Address: Anne Arundel County, Maryland
+From: Resident in Tenancy
+
+SUBJECT: URGENT NOTICE TO REMEDY MOISTURE INTRUSION AND SUSPECTED MOLD
+
+Please accept this written notice that substantial moisture conditions and suspected fungal growth exist at the leased premises in the following area(s):
+• Location: ${roomLocation}
+• Initial Discovery: ${concernDate}
+• Prior Notice Given: ${dateNotifiedLandlord}
+• Observed Defects: ${concernDesc}
+• Unresolved Status: ${landlordResponse}
+
+Under Maryland Real Property Code § 8-211, a housing provider has a legal duty to repair conditions that constitute a serious and substantial threat to the life, health, or safety of occupants, including chronic water leaks, structural decay, and severe dampness.
+
+REQUESTED REMEDIATION STEPS:
+1. Conduct a professional diagnostic inspection to locate and permanently fix the active water source.
+2. Undertake lead-safe and containment-safe remediation of damaged drywall, flooring, and c
